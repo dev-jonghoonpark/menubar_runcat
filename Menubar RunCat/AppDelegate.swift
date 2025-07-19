@@ -3,10 +3,12 @@
  Menubar RunCat
 
  Created by Takuto Nakamura on 2019/08/06.
+ Modified by Jonghoon Park on 2025/07/19
  Copyright © 2019 Takuto Nakamura. All rights reserved.
 */
 
 import Cocoa
+import ServiceManagement
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var statusItem: NSStatusItem = {
@@ -23,12 +25,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var index: Int = 0
     private var interval: Double = 1.0
     private let cpu = CPU()
-    private var usage: CPUInfo = CPU.default
-    private var cpuTimer: Timer? = nil
+    private var cpuUsage: CPUInfo = CPU.default
+    private let memory = Memory()
+    private var memoryUsage: MemoryInfo = Memory.default
+    private var usageUpdateTimer: Timer? = nil
     private var runnerTimer: Timer? = nil
-    private var isShowUsage: Bool = false
+    private var isShowCpuUsage: Bool = false
+    private var isShowMemoryUsage: Bool = false
+    private var isEnabledRunOnLogin: Bool = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        isShowCpuUsage = UserDefaults.standard.bool(forKey: "isShowCpuUsage")
+        isShowMemoryUsage = UserDefaults.standard.bool(forKey: "isShowMemoryUsage")
+        isEnabledRunOnLogin = (SMAppService.mainApp.status == .enabled)
+
         setupStatusItem()
         startRunning()
     }
@@ -38,13 +48,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updateUsageDescription() {
-        statusItem.button?.title = isShowUsage ? usage.description : ""
+        let title: String = {
+            switch (isShowCpuUsage, isShowMemoryUsage) {
+            case (true, true):
+                return "\(cpuUsage.description) / \(memoryUsage.description)"
+            case (true, false):
+                return cpuUsage.description
+            case (false, true):
+                return memoryUsage.description
+            case (false, false):
+                return ""
+            }
+        }()
+
+        statusItem.button?.title = title
     }
 
-    @objc func toggleShowUsage(_ sender: NSMenuItem) {
-        isShowUsage = (sender.state == .off)
-        sender.state = isShowUsage ? .on : .off
+    @objc func toggleShowCpuUsage(_ sender: NSMenuItem) {
+        isShowCpuUsage = (sender.state == .off)
+        sender.state = isShowCpuUsage ? .on : .off
+        UserDefaults.standard.set(isShowCpuUsage, forKey: "isShowCpuUsage")
         updateUsageDescription()
+    }
+
+    @objc func toggleShowMemoryUsage(_ sender: NSMenuItem) {
+        isShowMemoryUsage = (sender.state == .off)
+        sender.state = isShowMemoryUsage ? .on : .off
+        UserDefaults.standard.set(isShowMemoryUsage, forKey: "isShowMemoryUsage")
+        updateUsageDescription()
+    }
+
+    @objc func toggleRunOnLogin(_ sender: NSMenuItem) {
+        do {
+            let currentStatus = SMAppService.mainApp.status
+            isEnabledRunOnLogin = (currentStatus != .enabled)
+            
+            if isEnabledRunOnLogin {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            sender.state = isEnabledRunOnLogin ? .on : .off
+            UserDefaults.standard.set(isEnabledRunOnLogin, forKey: "isEnabledRunOnLogin")
+        } catch {
+            // Unexpected error
+        }
     }
 
     @objc func openAbout(_ sender: Any?) {
@@ -66,10 +114,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
             statusItem.button?.font = font
         }
-        menu.addItem(withTitle: "Show CPU Usage",
-                     action: #selector(toggleShowUsage(_:)),
-                     keyEquivalent: "")
+        
+        let cpuMenuItem = NSMenuItem(title: "Show CPU Usage",
+                                      action: #selector(toggleShowCpuUsage(_:)),
+                                      keyEquivalent: "")
+        cpuMenuItem.state = isShowCpuUsage ? .on : .off
+        menu.addItem(cpuMenuItem)
+        
+        let memoryMenuItem = NSMenuItem(title: "Show Memory Usage",
+                                      action: #selector(toggleShowMemoryUsage(_:)),
+                                      keyEquivalent: "")
+        memoryMenuItem.state = isShowMemoryUsage ? .on : .off
+        menu.addItem(memoryMenuItem)
+        
         menu.addItem(NSMenuItem.separator())
+        
+        let runOnLoginMenuItem = NSMenuItem(title: "Run on login",
+                                      action: #selector(toggleRunOnLogin(_:)),
+                                      keyEquivalent: "")
+        runOnLoginMenuItem.state = isEnabledRunOnLogin ? .on : .off
+        menu.addItem(runOnLoginMenuItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        
         menu.addItem(withTitle: "About Menubar RunCat",
                      action: #selector(openAbout(_:)),
                      keyEquivalent: "")
@@ -99,8 +166,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updateUsage() {
-        usage = cpu.currentUsage()
-        interval = 0.2 / max(1.0, min(20.0, self.usage.value / 5.0))
+        cpuUsage = cpu.currentUsage()
+        memoryUsage = memory.currentUsage()
+        interval = max(0.03, 0.45 / max(1.0, min(20.0, self.cpuUsage.value / 5.0)))
         updateUsageDescription()
         runnerTimer?.invalidate()
         runnerTimer = Timer(timeInterval: self.interval, repeats: true, block: { [weak self] _ in
@@ -115,15 +183,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func startRunning() {
-        cpuTimer = Timer(timeInterval: 5.0, repeats: true, block: { [weak self] _ in
+        usageUpdateTimer = Timer(timeInterval: 5.0, repeats: true, block: { [weak self] _ in
             self?.updateUsage()
         })
-        RunLoop.main.add(cpuTimer!, forMode: .common)
-        cpuTimer?.fire()
+        RunLoop.main.add(usageUpdateTimer!, forMode: .common)
+        usageUpdateTimer?.fire()
     }
     
     private func stopRunning() {
         runnerTimer?.invalidate()
-        cpuTimer?.invalidate()
+        usageUpdateTimer?.invalidate()
     }
 }

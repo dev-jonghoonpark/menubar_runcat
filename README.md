@@ -1,29 +1,20 @@
 # menubar_runcat
 
-<!-- # Short Description -->
+I built an archived version of Run Cat into a `.dmg` file for my personal use since I'm in an environment where I can't use the App Store.
 
-A cute Running Cat animation on your MacBook menubar.
+- origin repository (archived): [Kyome22/menubar_runcat](Kyome22/menubar_runcat)
+- [App Store Version](https://apps.apple.com/us/app/runcat/id1429033973) - not opensource
 
-This project is a reduced version of RunCat.app (App Store).
+## Changes
 
-<!-- # Badges -->
+- Modified Run Cat speed logic
+- Added memory usage feature
+- Added run on login feature
 
-[![Github issues](https://img.shields.io/github/issues/Kyome22/menubar_runcat)](https://github.com/Kyome22/menubar_runcat/issues)
-[![Github forks](https://img.shields.io/github/forks/Kyome22/menubar_runcat)](https://github.com/Kyome22/menubar_runcat/network/members)
-[![Github stars](https://img.shields.io/github/stars/Kyome22/menubar_runcat)](https://github.com/Kyome22/menubar_runcat/stargazers)
-[![Github top language](https://img.shields.io/github/languages/top/Kyome22/menubar_runcat)](https://github.com/Kyome22/menubar_runcat/)
-[![Github license](https://img.shields.io/github/license/Kyome22/menubar_runcat)](https://github.com/Kyome22/menubar_runcat/)
-
-# Tags
-
-`Swift` `Cat` `menubar`
-
-# Demo
+## Demo
 
 ![Demo](resources/demo.gif)
 
-# Contributors
+## Download
 
-- [Kyome22](https://github.com/Kyome22)
-
-<!-- CREATED_BY_LEADYOU_README_GENERATOR -->
+You can download `.dmg` from [releases](https://github.com/dev-jonghoonpark/menubar_runcat/releases)
